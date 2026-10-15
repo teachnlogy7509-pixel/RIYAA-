@@ -23,7 +23,7 @@
   <meta name="twitter:description" content="Premium NEET PDFs, focus music, Community and Live Chat by Rathod." />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=16" />
   <title>RATHOD HUB 3.0 — NEET Study Material by Rathod</title>
 </head>
 <body>
@@ -53,7 +53,7 @@
         <button id="menuBtn" class="icon-btn" aria-label="Open menu">☰</button>
         <div class="mobile-brand"><img class="mini-mark brand-logo" src="icons/icon.svg?v=10" alt=""><b>RATHOD HUB 3.0</b></div>
         <div class="desktop-heading"><small>GOOD TO SEE YOU 👋</small><h1 id="pageTitle">RATHOD HUB 3.0</h1></div>
-        <div class="top-actions"><button class="round-btn" aria-label="Notifications">♧<span></span></button><div id="connectionBadge" class="badge">Connecting…</div></div>
+        <div class="top-actions"><button id="adminLoginTop" class="admin-login-top" type="button" aria-label="Admin email login">🛡 Admin Login</button><button class="round-btn" aria-label="Notifications">♧<span></span></button><div id="connectionBadge" class="badge">Connecting…</div></div>
       </header>
 
       <section id="home" class="view active">
@@ -132,9 +132,9 @@
   <nav class="mobile-nav six" aria-label="Mobile navigation"><button class="active" data-view="home"><span>⌂</span><small>Home</small></button><button data-view="materials"><span>▤</span><small>Library</small></button><button class="mobile-live" data-view="community"><span>☻</span><small>Community</small></button><button data-view="music"><span>♫</span><small>Music</small></button><button data-view="leaderboard"><span>♛</span><small>Ranks</small></button><button data-view="chat"><span>💬</span><small>Chat</small></button></nav>
 
   <dialog id="doubtDialog"><form id="doubtForm" method="dialog" class="modal-card"><div class="modal-head"><div><span class="eyebrow">ASK COMMUNITY</span><h3>Post your doubt</h3></div><button type="button" id="closeDialog" class="icon-btn">✕</button></div><label>Subject<select id="doubtSubject" required><option>Physics</option><option>Chemistry</option><option>Biology</option><option>Botany</option><option>Zoology</option><option>Other</option></select></label><label>Your question<textarea id="doubtText" rows="5" maxlength="800" placeholder="Explain your doubt clearly…" required></textarea></label><button class="primary full" type="submit">Post to community</button></form></dialog>
-  <dialog id="adminLoginDialog" class="admin-login-dialog"><form id="adminLoginForm" class="admin-login-card"><button type="button" id="adminLoginClose" class="admin-login-close">✕</button><span class="eyebrow">SECURE ACCESS</span><h2>ADMIN LOGIN ONLY</h2><p>केवल authorized administrator के लिए।</p><label>Admin email<input id="adminLoginEmail" type="email" autocomplete="username" required placeholder="Admin email"></label><label>Password<input id="adminLoginPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="Admin password"></label><label>Admin name<input value="ASHISH RATHOR" readonly></label><button id="adminLoginSubmit" class="primary full" type="submit">Secure Admin Login</button><p id="adminLoginStatus" class="admin-login-status"></p></form></dialog>
+  <dialog id="adminLoginDialog" class="admin-login-dialog"><form id="adminLoginForm" class="admin-login-card"><button type="button" id="adminLoginClose" class="admin-login-close">✕</button><span class="eyebrow">SECURE ACCESS</span><h2>ADMIN LOGIN ONLY</h2><p>Student name login अलग है। Admin access के लिए अपने authorized Firebase account की email और password डालें।</p><label>Admin email<input id="adminLoginEmail" type="email" autocomplete="username" required placeholder="Admin email"></label><label>Password<input id="adminLoginPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="Admin password"></label><label>Admin name<input value="ASHISH RATHOR" readonly></label><button id="adminLoginSubmit" class="primary full" type="submit">Secure Admin Login</button><p id="adminLoginStatus" class="admin-login-status"></p></form></dialog>
   <div id="toast" class="toast"></div>
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebApplication","@id":"https://teachnlogy7509-pixel.github.io/RATHOD-HUB-3.0/#app","name":"RATHOD HUB 3.0","alternateName":["Rathod Hub 3.0","Study Material by Rathod"],"applicationCategory":"EducationalApplication","operatingSystem":"Web, Android, Windows","isAccessibleForFree":true,"inLanguage":["hi-IN","en-IN"],"description":"Premium NEET study-material web app with Physics, Chemistry and Biology PDFs, focus music, community and live chat.","url":"https://teachnlogy7509-pixel.github.io/RATHOD-HUB-3.0/","author":{"@type":"Person","name":"ASHISH RATHOR"}},{"@type":"Brand","name":"Rathod Hub","description":"Rathod Hub is the main learning ecosystem. RATHOD HUB 2.0 is for YPT and focus time, while RATHOD HUB 3.0 is for NEET study material."}]}</script>
-  <script type="module" src="app.js?v=15"></script>
+  <script type="module" src="app.js?v=16"></script>
 </body>
 </html>
