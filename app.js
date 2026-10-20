@@ -1,8 +1,10 @@
+import { mergeLibrary, mainMaterial, catalogSubjects, catalogFolders, safeURL } from './library-sync.js?v=17';
 import { firebaseConfig } from './firebase-config.js?v=8';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const ADMIN_NAME = 'ASHISH RATHOR';
+const librarySources={mainMaterials:[],firebaseMaterials:[],mainSongs:[],firebaseSongs:[]};
 const state = { user: null, db: null, auth: null, firebase: false, isAdmin: false, materials: [], doubts: [], songs: [], leaders: [], community: [], listeners: {} };
 const demoMaterials = [
   {id:'1',title:'Motion & Laws — Quick Notes',description:'Core formulas, graphs and solved examples.',subject:'Physics',type:'PDF',url:'#'},
@@ -11,7 +13,7 @@ const demoMaterials = [
 ];
 
 function toast(text){const t=$('#toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
-function openView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('.nav-item,.mobile-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$('#pageTitle').textContent={home:'RATHOD HUB 3.0',materials:'Study Material',chat:'Live Chat',doubts:'Doubt Room',music:'Focus Music',leaderboard:'Leaderboard',community:'Community',admin:'Admin Sync'}[id];$('.sidebar').classList.remove('open');location.hash=id==='home'?'':id;stopHiddenListeners(id);if(state.firebase&&state.user)subscribeView(id)}
+function openView(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('.nav-item,.mobile-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$('#pageTitle').textContent={home:'RATHOD HUB 3.0',materials:'Study Material',chat:'Live Chat',doubts:'Doubt Room',music:'Focus Music',leaderboard:'Leaderboard',community:'Community',admin:'Admin Sync'}[id];$('.sidebar').classList.remove('open');location.hash=id==='home'?'':id;stopHiddenListeners(id);if(state.firebase&&state.user)subscribeView(id);if(id==='materials'||id==='music')refreshMainLibrary()}
 $$('[data-view]').forEach(b=>b.onclick=()=>openView(b.dataset.view));$$('[data-open]').forEach(b=>b.onclick=()=>openView(b.dataset.open));$('#menuBtn').onclick=()=>$('.sidebar').classList.toggle('open');
 
 function esc(s=''){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -39,11 +41,11 @@ function renderCatalog(){
  $('#catalogBack').classList.toggle('hidden',catalog.level==='subjects');
  if(catalog.level==='subjects'){
   $('#catalogEyebrow').textContent='ALL CLASSES';$('#catalogTitle').textContent='Choose your subject';$('#catalogSubtitle').textContent='Complete NEET library — Physics, Chemistry and Biology.';$('#materialSearch').placeholder='Search subjects…';
-  const rows=neetSubjects.filter(x=>x.name.toLowerCase().includes(q));
+  const rows=catalogSubjects(neetSubjects,state.materials).filter(x=>x.name.toLowerCase().includes(q));
   grid.className='catalog-grid subject-catalog';grid.innerHTML=rows.map(x=>`<button class="subject-card ${x.tone}" data-catalog-subject="${esc(x.name)}"><span class="catalog-icon">${x.icon}</span><div><span>${x.code}</span><b>${x.name}</b><small>${materialCount(x.name)} PDFs available</small></div><em>›</em></button>`).join('');$('#materialsEmpty').classList.add('hidden');
  } else if(catalog.level==='folders'){
   $('#catalogEyebrow').textContent='SUBJECT LIBRARY';$('#catalogTitle').textContent=catalog.subject;$('#catalogSubtitle').textContent='Open a folder to view its PDFs.';$('#materialSearch').placeholder='Search folders…';
-  const rows=folderTemplates.filter(x=>`${x.name} ${x.note}`.toLowerCase().includes(q));
+  const rows=catalogFolders(folderTemplates,state.materials,catalog.subject).filter(x=>`${x.name} ${x.note}`.toLowerCase().includes(q));
   grid.className='catalog-grid folder-catalog';grid.innerHTML=rows.map(x=>`<button class="folder-card" data-catalog-folder="${esc(x.name)}"><span class="folder-code">${x.code}</span><span class="folder-icon">${x.icon}</span><div><b>${x.name}</b><small>${x.note}</small><span>${materialCount(catalog.subject,x.name)} PDFs</span></div><em>›</em></button>`).join('');$('#materialsEmpty').classList.add('hidden');
  } else {
   $('#catalogEyebrow').textContent=catalog.subject.toUpperCase();$('#catalogTitle').textContent=catalog.folder;$('#catalogSubtitle').textContent='Open or download your study PDFs.';$('#materialSearch').placeholder='Search PDFs…';
@@ -92,10 +94,10 @@ const VIEW_LISTENER={materials:'materials',doubts:'doubts',chat:'messages',music
 function stopHiddenListeners(view){const keep=VIEW_LISTENER[view]||'';for(const [key,unsubscribe] of Object.entries(state.listeners)){if(key!==keep){try{unsubscribe()}catch{}delete state.listeners[key]}}}
 function listenOnce(key,queryRef,onData,onError){if(state.listeners[key])return;state.listeners[key]=state.api.onSnapshot(queryRef,onData,onError||((e)=>console.warn(key+' listener:',e)))}
 function subscribeView(view){if(!state.firebase||!state.user||!state.api)return;const a=state.api;
- if(view==='materials')listenOnce('materials',a.query(a.collection(state.db,'materials'),a.orderBy('createdAt','desc'),a.limit(100)),s=>{state.materials=s.docs.map(d=>({id:d.id,...d.data()}));renderCatalog()});
+ if(view==='materials')listenOnce('materials',a.query(a.collection(state.db,'materials'),a.orderBy('createdAt','desc')),s=>{librarySources.firebaseMaterials=s.docs.map(d=>({id:d.id,...d.data()}));mergeSharedLibrary()});
  if(view==='doubts')listenOnce('doubts',a.query(a.collection(state.db,'doubts'),a.orderBy('createdAt','desc'),a.limit(100)),s=>{state.doubts=s.docs.map(d=>({id:d.id,...d.data()}));renderDoubts()});
  if(view==='chat')listenOnce('messages',a.query(a.collection(state.db,'messages'),a.orderBy('createdAt','asc'),a.limit(100)),s=>{$('#chatMessages').innerHTML='';s.docs.forEach(d=>addMessage(d.data()))});
- if(view==='music')listenOnce('songs',a.query(a.collection(state.db,'songs'),a.orderBy('createdAt','desc'),a.limit(100)),s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()}));if(rows.length){state.songs=rows;renderSongs()}});
+ if(view==='music')listenOnce('songs',a.query(a.collection(state.db,'songs'),a.orderBy('createdAt','desc')),s=>{librarySources.firebaseSongs=s.docs.map(d=>({id:d.id,...d.data()}));mergeSharedLibrary()});
  if(view==='leaderboard')listenOnce('leaders',a.query(a.collection(state.db,'legacy_leaderboard'),a.orderBy('seasonXp','desc'),a.limit(100)),s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()}));if(rows.length){state.leaders=rows;renderLeaderboard()}});
  if(view==='community')listenOnce('community',a.query(a.collection(state.db,'community_posts'),a.orderBy('createdAt','desc'),a.limit(50)),s=>{state.community=s.docs.map(d=>({id:d.id,...d.data()}));localStorage.setItem('rh3_community_cache',JSON.stringify(state.community.map(x=>({...x,createdAt:x.createdAt?.toDate?x.createdAt.toDate().toISOString():x.createdAt}))));renderCommunity()},e=>{console.warn('Community listener:',e);try{state.community=JSON.parse(localStorage.getItem('rh3_community_cache')||'[]')}catch{state.community=[]}renderCommunity();toast('Community offline cache mode')});
 }
@@ -103,7 +105,43 @@ $('#chatForm').onsubmit=async e=>{e.preventDefault();const text=$('#chatInput').
 $('#askDoubtBtn').onclick=()=>$('#doubtDialog').showModal();$('#closeDialog').onclick=()=>$('#doubtDialog').close();$('#doubtForm').onsubmit=async e=>{e.preventDefault();const item={subject:$('#doubtSubject').value,text:$('#doubtText').value.trim(),uid:state.user?.uid||'guest',authorName:state.user?.displayName||'Student',createdAt:state.firebase?state.api.serverTimestamp():Date.now()};if(state.firebase)await state.api.addDoc(state.api.collection(state.db,'doubts'),item);else{state.doubts.unshift(item);localStorage.setItem('rh_doubts',JSON.stringify(state.doubts));renderDoubts()}$('#doubtText').value='';$('#doubtDialog').close();toast('Doubt posted')};
 
 $('#communityForm').onsubmit=async e=>{e.preventDefault();if(!state.user)return toast('Pehle apna naam daal kar login karein');const text=$('#communityText').value.trim();if(!text)return;if(!state.firebase||!state.api)return toast('Community connect हो रही है — फिर try करें');const a=state.api;try{await a.addDoc(a.collection(state.db,'community_posts'),{uid:state.user.uid,name:state.user.displayName||'Student',text:text.slice(0,1000),reactions:{},comments:[],createdAt:a.serverTimestamp()});$('#communityText').value='';toast('Community post published ✓')}catch(err){console.error(err);toast(navigator.onLine?'Community permission publish करनी है':'Offline — text safe रखें और online होकर post करें')}};
-$('#adminMaterialForm').onsubmit=async e=>{e.preventDefault();if(!state.isAdmin)return toast('Admin access required');const a=state.api;await a.addDoc(a.collection(state.db,'materials'),{title:$('#adminMatTitle').value.trim(),description:'Synced by '+ADMIN_NAME,subject:$('#adminMatSubject').value,folder:$('#adminMatFolder').value,type:'PDF',url:$('#adminMatUrl').value.trim(),size:'Drive/R2',sourceApp:'RATHOD HUB shared catalog',adminName:ADMIN_NAME,uploadedBy:ADMIN_NAME,createdAt:a.serverTimestamp()});e.target.reset();toast('Material synced ✓')};
-$('#adminSongForm').onsubmit=async e=>{e.preventDefault();if(!state.isAdmin)return toast('Admin access required');const a=state.api;await a.addDoc(a.collection(state.db,'songs'),{title:$('#adminSongTitle').value.trim(),audioUrl:$('#adminSongUrl').value.trim(),driveFileId:$('#adminSongDrive').value.trim(),status:'ready',sourceApp:'RATHOD HUB shared catalog',adminName:ADMIN_NAME,uploadedBy:ADMIN_NAME,createdAt:a.serverTimestamp()});e.target.reset();toast('Song synced ✓')};
+async function publishShared(form,collectionName,makeRow){
+ if(!state.isAdmin)return toast('Admin access required');
+ const button=form.querySelector('button[type="submit"],button'),label=button.textContent;button.disabled=true;button.textContent='Publishing…';
+ try{const a=state.api;await a.addDoc(a.collection(state.db,collectionName),makeRow(a));form.reset();await refreshMainLibrary();toast('Published ✓ — 1.0 aur 3.0 ki shared library mein available')}catch(error){console.error('Shared library publish failed',error);toast(error.code==='permission-denied'?'Admin permission check failed — dobara Admin Login karein':('Publish failed: '+(error.message||'Try again')))}finally{button.disabled=false;button.textContent=label}
+}
+$('#adminMaterialForm').onsubmit=e=>{e.preventDefault();const url=safeURL($('#adminMatUrl').value.trim());if(!url)return toast('Valid HTTPS PDF/material link daalein');return publishShared(e.target,'materials',a=>({title:$('#adminMatTitle').value.trim(),description:'Published by '+ADMIN_NAME,subject:$('#adminMatSubject').value,folder:$('#adminMatFolder').value,type:'PDF',url,size:'Drive/R2',sourceApp:'RATHOD HUB shared catalog',adminName:ADMIN_NAME,uploadedBy:ADMIN_NAME,createdAt:a.serverTimestamp()}))};
+$('#adminSongForm').onsubmit=e=>{e.preventDefault();const audioUrl=safeURL($('#adminSongUrl').value.trim());if(!audioUrl)return toast('Valid HTTPS audio link daalein');return publishShared(e.target,'songs',a=>({title:$('#adminSongTitle').value.trim(),audioUrl,driveFileId:$('#adminSongDrive').value.trim(),status:'ready',sourceApp:'RATHOD HUB shared catalog',adminName:ADMIN_NAME,uploadedBy:ADMIN_NAME,createdAt:a.serverTimestamp()}))};
 let deferredPrompt;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').classList.remove('hidden')});$('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#installBtn').classList.add('hidden')}};
+
+function mergeSharedLibrary(){
+ state.materials=mergeLibrary(librarySources.mainMaterials,librarySources.firebaseMaterials);
+ state.songs=mergeLibrary(librarySources.mainSongs,librarySources.firebaseSongs,'song');
+ renderCatalog();renderSongs();
+}
+let sharedRefresh=null;
+async function fetchPublicLibrary(path){
+ const all=[];for(let offset=0;;offset+=500){const response=await fetch(SUPABASE_URL+path+'&limit=500&offset='+offset,{headers:{apikey:SUPABASE_KEY},cache:'no-store',signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error('Main HUB library HTTP '+response.status);const rows=await response.json();if(!Array.isArray(rows))throw new Error('Invalid library response');all.push(...rows);if(rows.length<500)return all}
+}
+function refreshMainLibrary(){
+ if(sharedRefresh)return sharedRefresh;
+ sharedRefresh=(async()=>{
+  const result=await Promise.allSettled([
+   fetchPublicLibrary('/rest/v1/posts?select=id,title,desc,category,file_url,file_name,file_type,file_size,created_at&is_material=eq.true&order=created_at.desc,id.desc'),
+   fetchPublicLibrary('/rest/v1/rh_song_library?select=id,title,audio_url,drive_url,drive_file_id,status,created_at&status=eq.ready&order=created_at.desc,id.desc')
+  ]);
+  if(result[0].status==='fulfilled')librarySources.mainMaterials=result[0].value.map(mainMaterial);
+  if(result[1].status==='fulfilled')librarySources.mainSongs=result[1].value;
+  mergeSharedLibrary();
+  const errors=result.filter(x=>x.status==='rejected');
+  document.querySelectorAll('[data-shared-library-status]').forEach(el=>{el.textContent=errors.length?'Main HUB update unavailable — last loaded library preserved; refresh par retry hoga.':'Main HUB + 3.0 shared library · Online · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})});
+  errors.forEach(x=>console.warn('Shared library read:',x.reason));
+ })().catch(error=>console.warn('Shared library refresh failed',error)).finally(()=>{sharedRefresh=null});return sharedRefresh;
+}
+window.addEventListener('online',refreshMainLibrary);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshMainLibrary()});
+setInterval(()=>{if(document.visibilityState==='visible'&&['materials','music'].includes(location.hash.slice(1)))refreshMainLibrary()},20000);
+
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));openView(location.hash.slice(1)||'home');initFirebase();
+
+refreshMainLibrary();
